@@ -30,24 +30,19 @@ class Tile():
 	
 	def set_graphics(self, layer, object):
 		self.graphics[layer] = object
-		print("set_graphics reports:", self.graphics[layer][1][0][0])
 	
 	def get_graphics_type(self, layer):
 		# Determines whether the sprite on this layer is a static object, animated-object, autotile object or animated autotile object.
 		# Returns on the form [base object, animated] with base object = object, autotile, and animated = True, False.
 		baseobject = None,
 		animated = False
-		#print("from the tile file:", self.graphics[0])
 		if self.graphics[layer] == [None]:
 			baseobject =  None
 			animated = False
-			#print("None-type graphics")
 		elif len(self.graphics[layer][1]) == 1 and len(self.graphics[layer][1][0]) == 1:
-			#print("One sprite, one frame = static object")
 			baseobject = 'object'
 			animated = False
 		return [baseobject, animated]
-		#print(baseobject, animated)
 		'''
 		elif  self.graphics[layer] != [None] and len(self.graphics[layer][1]) == 1:	# and len(self.graphics[layer][1][0] == 1):
 			#The first object checks the number of sprites to be drawn in one tile. If 1, it's an object.
