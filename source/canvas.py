@@ -60,20 +60,19 @@ class MapCanvas(FloatLayout):
 		
 		
 	def update_size(self):
-		# Offset for size
-		self.offsetx = [0, self.jCount * self.tileWidth / 2]
-		self.offset = [self.offsetx[0] + self.offsetx[1], 0]
+		# Offset for size	
+		self.offset = [50, 50]
 		# Width in classical coordinates, minimum being iCount * tileWidth
-		self.width = (self.iCount + self.jCount) * self.tileWidth / 2
+		self.width = (self.iCount + self.jCount) * self.tileWidth / 2 + 2 * self.offset[0]
 		# Height in classical coordinates, minimum being jCount * tileHeight
-		self.height = (self.iCount + self.jCount) * self.tileHeight / 2 + self.offset[1] + (len(self.mapFile.stories)) * 3 * self.tileHeight
+		self.height = (self.iCount + self.jCount) * self.tileHeight / 2 + 2 * self.offset[1] + (len(self.mapFile.stories)) * 3 * self.tileHeight
 		if self.parent != None:
 			if self.parent.width > self.width:
 				print("increasing x offset")
 				self.width += (self.parent.width - self.width) / 2
 			if self.parent.height > self.height:
 				self.height += (self.parent.height - self.height) / 2 
-		#self.get_coefficients
+		self.get_coefficients()
 		
 	def zoom(self, width, height):
 		self.tileWidth = width
@@ -92,19 +91,22 @@ class MapCanvas(FloatLayout):
 		self.animatedList =  [ [] for l in range(self.mapFile.layerCount)]
 	
 	def get_coefficients(self):
-		print("Calculating coefficients")
-		# To determine i:
-		self.iCoeff =  -(self.jCount - (self.offsetx[0] / self.tileWidth) - (self.offset[1] / self.tileHeight)) / 2
-		# To determine j:
-		#self.jCoeff = (self.jCount + (self.offsetx[0] / self.tileWidth) + ( - self.offset[1]/ self.tileHeight)) / 2
-		self.jCoeff = 14
+		self.ratio = self.tileHeight / self.tileWidth
+		# For i:
+		self.iCoeffMin = self.offset[1] + self.ratio * (self.offset[0] + self.jCount * self.tileWidth / 2)
+		self.iCoeffMax = self.offset[1] + (self.jCount + self.iCount) * self.tileHeight / 2 + self.ratio * (self.offset[0] + self.iCount * self.tileWidth / 2)
+		self.iCoeffSR = (self.iCoeffMax - self.iCoeffMin) / self.iCount
+		# For j:
+		self.jCoeffMin = self.offset[1] - self.ratio * (self.offset[0] + self.jCount * self.tileWidth / 2)
+		self.jCoeffMax =  self.offset[1] + (self.jCount + self.iCount) * self.tileHeight / 2 - self.ratio * (self.offset[0] + self.iCount * self.tileWidth / 2)
+		self.jCoeffSR = (self.jCoeffMax - self.jCoeffMin) / self.jCount	
+		
 	def get_coordinates(self, x, y):
-		j = int( (- x / self.tileWidth) + (y / self.tileHeight) + self.jCoeff )
-		i = int( (x / self.tileWidth) + (y / self.tileHeight) + self.iCoeff )
+		j = int((y - self.tileHeight / self.tileWidth * x - self.jCoeffMin) / self.jCoeffSR)
+		i = int( (y + self.tileHeight / self.tileWidth * x - self.iCoeffMin) / self.iCoeffSR  )
 		return [i, j]
 		
 	def on_down(self, parent, touch):
-		print(touch.pos)
 		# Function for handling what happens when one clicks anywhere on the map, with the left or right mouse button.
 		# Left mouse button being pressed:		
 		if 'left' in touch.button:
@@ -171,21 +173,20 @@ class MapCanvas(FloatLayout):
 				else:
 					self.selectedPaint = None
 					self.clear_palette_selection()
+					self.canvas.after.clear()
 					
 	def clear_palette_selection(self):
 		if self.palettes != None or len(self.palettes) != 0:
-						for k in range(len(self.palettes)):
-							self.palettes[k].canvas.after.clear()
-							
+			for k in range(len(self.palettes)):
+				self.palettes[k].canvas.after.clear()
+						
 	def on_move(self, parent, touch):
 		# Left mouse button is being held:
 		if self.leftHold == True and self.rightHold != True:
-			print()
 			# Convert classical (x,y)-coordinates to isometric (i,j)-coordinates:
 			coords = self.get_coordinates(touch.pos[0], touch.pos[1])
 			i = coords[0]
 			j = coords[1]
-			print(i, j)
 			# Calculate the difference between the current position and the old position.
 			try:
 				di = i - self.initialPosition[0]
@@ -215,7 +216,8 @@ class MapCanvas(FloatLayout):
 								self.highlight([[self.initialPosition[0] + diri * n, self.initialPosition[1] + dirj * m]])		
 				# The selected tiles must be drawn again of course, to keep them static.
 				self.highlight(self.selectedTiles)
-	
+			else:
+				pass
 		
 	def on_up(self, parent, touch):
 		if 'left' in touch.button:
@@ -242,9 +244,9 @@ class MapCanvas(FloatLayout):
 				i = coords[n][0]
 				j = coords[n][1]
 				with self.canvas.after:
-					x = [(i - j) * self.tileWidth / 2 + self.offset[0] ,
-						(i - j) * self.tileWidth / 2 + self.offset[0] - self.tileWidth / 2,
-						(i - j) * self.tileWidth / 2 + self.offset[0] + self.tileWidth / 2]
+					x = [(i - j) * self.tileWidth / 2 + self.offset[0] + self.jCount * self.tileWidth/2 ,
+						(i - j) * self.tileWidth / 2 + self.offset[0] + self.jCount * self.tileWidth/2 - self.tileWidth / 2,
+						(i - j) * self.tileWidth / 2 + self.offset[0] + self.jCount * self.tileWidth/2 + self.tileWidth / 2]
 					y = [(i + j) * self.tileHeight / 2 + self.offset[1],
 						(i + j) * self.tileHeight / 2 + self.tileHeight * 0.5 + self.offset[1],
 						(i + j) * self.tileHeight / 2 + self.tileHeight * 1 + self.offset[1]]
@@ -252,15 +254,10 @@ class MapCanvas(FloatLayout):
 					Quad(points = (x[0], y[0], x[1], y[1], x[0], y[2], x[2], y[1]))
 		
 	def set_graphics(self, graphics, i, j, layer):
-					
+		self.unrender_tile(i, j, self.currentStory)
 		self.mapFile.stories[self.currentStory].matrix[int(i)][int(j)].set_graphics(layer, graphics)
-		self.clear_lists()
 		self.populate_lists()
-		self.render_map()
-		#for iTile in range(self.iCount - i):
-		#	for jTile in range(self.jCount - j):	
-		#		self.render_tile(self.iCount - iTile, self.jCount - jTile, layer, self.currentStory)
-				
+		self.render_tile(i, j, layer, self.currentStory)
 		
 	def populate_lists(self):	
 		for s in range(self.currentStory + 1):
@@ -272,38 +269,18 @@ class MapCanvas(FloatLayout):
 						if type[0] != None:
 							graphicsInfo = tile.graphics[l]
 							image = Image(graphicsInfo[0]).texture
-							x = (i - j) * self.tileWidth / 2 + self.offset[0]
+							x = (i - j) * self.tileWidth / 2 + self.offset[0] + self.jCount * self.tileWidth / 2 
 							y = (i + j) * self.tileHeight / 2 + self.offset[1]
-							if type[0] == 'object' and type[1] == False:
+							if (type[0] == 'object' or type[0] == 'wall') and type[1] == False:
 								# Object means a rectangle, not animated means it goes into renderList
 								self.renderList[s][l][i][j] = Rectangle(texture = image.get_region(graphicsInfo[1][0][0][0], graphicsInfo[1][0][0][1], graphicsInfo[2][0], graphicsInfo[2][1]), 
 																		size = (self.tileWidth, self.tileWidth * graphicsInfo[2][1] / graphicsInfo[2][0]), 
 																		pos = (x - self.tileWidth / 2, y) )
-								
 							
-							'''
-						elif type == ['object', True]:
-							# If the object is animated, it goes into the animatedTiles list, and also gets a frame-value:
-							self.animatedList[l].append( [Rectangle(texture = image.get_region(graphicsInfo[1][0][0], graphcisInfo[1][0][1], graphicsInfo[2][0], graphicsInfo[2][1]), size = (self.tileWidth, self.tileHeight), pos = (x - self.tileWidth/2, y)), 1] )
-						elif type == ['autotile', False]:
-							# Autotile means 4 quads, not animated means it goes into renderList:
-							a = Quad(texture = image.get_region(graphicsInfo[1][0][0], graphicsInfo[1][0][1], graphicsInfo[2][0], graphicsInfo[2][1]), points = (x, y, x - self.tileWidth / 4, y + self.tileHeight / 4, x, y + self.tileHeight / 2, x + self.tileWidth / 4, y + self.tileHeight / 4 ) )
-							b = Quad(texture = image.get_region(graphicsInfo[1][1][0], graphcisInfo[1][1][1], graphicsInfo[2][0], graphicsInfo[2][1]), points = (x - self.tileWidth / 4, y + self.tileWidth / 4, x - self.tileWidth / 2, y + self.tileHeight / 2, x - self.tileWidth / 4, y + self.tileHeight * 3 / 2, x, y + self.tileHeight / 4 ))
-							c = Quad(texture = image.get_region(graphicsInfo[1][2][0], graphcisInfo[1][2][1], graphicsInfo[2][0], graphicsInfo[2][1]), points = (x, y + self.tileWidth / 2, x - self.tileWidth / 4, y + self.tileHeight* 3 / 2, x, y + self.tileHeight, x + self.tileWidth / 4, y + self.tileHeight * 3 / 2 ))
-							d = Quad(texture = image.get_region(graphicsInfo[1][3][0], graphcisInfo[1][3][1], graphicsInfo[2][0], graphicsInfo[2][1]), points = (x + self.tileWidth / 4, y + self.tileWidth / 4, x, y + self.tileHeight / 2, x + self.tileWidth / 4, y + self.tileWidth * 3 / 2, x + self.tileWidth /2, y + self.tileWidth / 4 ))
-							self.renderList[s][l][i][j] = [a, b, c, d]
-						elif type == ['autotile', True]:
-							a = Quad(texture = image.get_region(graphicsInfo[1][0][0], graphcisInfo[1][0][1], graphicsInfo[2][0], graphicsInfo[2][1]), points = (x, y, x - self.tileWidth / 4, y + self.tileHeight / 4, x, y + self.tileHeight / 2, x + self.tileWidth / 4, y + self.tileHeight / 4 ) )
-							b = Quad(texture = image.get_region(graphicsInfo[1][1][0], graphcisInfo[1][1][1], graphicsInfo[2][0], graphicsInfo[2][1]), points = (x - self.tileWidth / 4, y + self.tileWidth / 4, x - self.tileWidth / 2, y + self.tileHeight / 2, x - self.tileWidth / 4, y + self.tileHeight * 3 / 2, x, y + self.tileHeight / 4 ))
-							c = Quad(texture = image.get_region(graphicsInfo[1][2][0], graphcisInfo[1][2][1], graphicsInfo[2][0], graphicsInfo[2][1]), points = (x, y + self.tileWidth / 2, x - self.tileWidth / 4, y + self.tileHeight* 3 / 2, x, y + self.tileHeight, x + self.tileWidth / 4, y + self.tileHeight * 3 / 2 ))
-							d = Quad(texture = image.get_region(graphicsInfo[1][3][0], graphcisInfo[1][3][1], graphicsInfo[2][0], graphicsInfo[2][1]), points = (x + self.tileWidth / 4, y + self.tileWidth / 4, x, y + self.tileHeight / 2, x + self.tileWidth / 4, y + self.tileWidth * 3 / 2, x + self.tileWidth /2, y + self.tileWidth / 4 ))
-							self.animatedList[l].append([ [a, b, c, d], 1])
-							'''
-	def unrender_tile(self, i, j, story):
-		for l in range(5):
-			print("unrender_tile reports: l = ", l)
-			if self.renderList[story][l][i][j] != [None]:
-				self.canvas.before.remove(self.renderList[story][l][i][j])
+	def unrender_tile(self, i, j, s):
+		for l in range(len(self.renderList[s])):
+			if self.renderList[s][l][i][j] != [None]:
+				self.canvas.before.remove(self.renderList[s][l][i][j])
 	
 	def render_tile(self, i, j, layer, story):
 		tile = self.mapFile.stories[self.currentStory].matrix[i][j]
@@ -311,35 +288,43 @@ class MapCanvas(FloatLayout):
 		if type[0] != None:
 			graphicsInfo = tile.graphics[layer]
 			image = Image(graphicsInfo[0]).texture
-			x = (i - j) * self.tileWidth / 2 + self.width / 2
-			y = (i + j) * self.tileHeight / 2 + self.tileHeight
-			if type[0] == 'object' and type[1] == False:
+			x = (i - j) * self.tileWidth / 2 +  self.offset[0] + self.jCount * self.tileWidth/2 
+			y = (i + j) * self.tileHeight / 2 + self.offset[1] 
+			self.renderList[story][layer][i][j].texture =  image.get_region(graphicsInfo[1][0][0][0], graphicsInfo[1][0][0][1], graphicsInfo[2][0], graphicsInfo[2][1])
+			print("Type is:", type[0])
+			if type[0] == 'object'  and type[1] == False:
 				# Object means a rectangle, not animated means it goes into renderList
-				self.renderList[story][layer][i][j] = Rectangle(texture = image.get_region(graphicsInfo[1][0][0][0], graphicsInfo[1][0][0][1], graphicsInfo[2][0], graphicsInfo[2][1]), 
-																size = (self.tileWidth, self.tileWidth * graphicsInfo[2][1] / graphicsInfo[2][0]), 
-																pos = (x - self.tileWidth/2, y) )
-			self.canvas.before.add(Color(1, 1, 1, 1))
-			for l in range(6):
-				if self.renderList[story][l][i][j] != [None]:
-					self.canvas.before.add(self.renderList[story][l][i][j])
-	
+				self.renderList[story][layer][i][j].size = (self.tileWidth, self.tileWidth * graphicsInfo[2][1] / graphicsInfo[2][0])
+				self.renderList[story][layer][i][j].pos =  (x - self.tileWidth/2, y)
+				self.canvas.before.add(Color(1, 1, 1, 1))
+				for l in range(len(self.renderList[story])):
+					if self.renderList[story][l][i][j] != [None]:
+						self.canvas.before.add(self.renderList[story][l][i][j])
+
+
 	def render_map(self):
 		self.canvas.before.clear()
 		grid = []
 		for i in range(self.iCount):
 				for j in range(self.jCount):
-					x = [(i - j) * self.tileWidth / 2 + self.offset[0] ,
-						(i - j) * self.tileWidth / 2 + self.offset[0] - self.tileWidth / 2,
-						(i - j) * self.tileWidth / 2  + self.offset[0] + self.tileWidth / 2]
+					x = [(i - j) * self.tileWidth / 2 + self.offset[0] + self.jCount * self.tileWidth/2 ,
+						(i - j) * self.tileWidth / 2 + self.offset[0] + self.jCount * self.tileWidth/2 - self.tileWidth / 2,
+						(i - j) * self.tileWidth / 2  + self.offset[0] + self.jCount * self.tileWidth/2 + self.tileWidth / 2]
 					y = [(i + j) * self.tileHeight / 2 + self.offset[1] + self.currentStory * self.tileHeight * 3,
 						(i + j) * self.tileHeight / 2 + self.tileHeight * 0.5 + self.offset[1] + self.currentStory * self.tileHeight * 3,
 						(i + j) * self.tileHeight / 2 + self.tileHeight + self.offset[1] + self.currentStory * self.tileHeight * 3]
-					self.canvas.before.add(Color(0.8, 0.8, 0.8, 1))
+					if self.currentLayer == 0:
+						self.canvas.before.add(Color(0.8, 0.8, 0.8, 1))
+					else:
+						self.canvas.before.add(Color(0.3, 0.3, 0.5, 1))
 					self.canvas.before.add(Quad(points = (x[0], y[0], x[1], y[1], x[0], y[2], x[2], y[1])))
 					grid.append(Line(points = (x[0], y[0], x[1], y[1], x[0], y[2], x[2], y[1], x[0], y[0])))
 		
 		for i in range(len(grid)):
-			self.canvas.before.add(Color(1, 1, 1, 1))
+			if self.currentLayer == 0:
+				self.canvas.before.add(Color(1, 1, 1, 1))
+			else:
+				self.canvas.before.add(Color(0.4, 0.4, 1, 1))
 			self.canvas.before.add(grid[i])		
 		
 		for s in range(self.currentStory + 1):
@@ -349,8 +334,12 @@ class MapCanvas(FloatLayout):
 				for i in range(len(self.renderList[s][l])):
 					for j in range(len(self.renderList[s][l][i])):
 						if self.renderList[s][l][len(self.renderList[s][l]) - i - 1][len(self.renderList[s][l][i]) - j - 1] != [None]:
-							
-							self.canvas.before.add(Color(1, 1, 1, 1))
+							if l == self.currentLayer:
+								self.canvas.before.add(Color(1, 1, 1, 1))
+							elif l < self.currentLayer:
+								self.canvas.before.add(Color(0.5, 0.5, 0.7, 1))
+							elif l > self.currentLayer:
+								self.canvas.before.add(Color(1, 1, 1, 0.2))
 							self.canvas.before.add(self.renderList[s][l][len(self.renderList[s][l]) - i - 1][len(self.renderList[s][l][i]) - j - 1])			
 						
 		

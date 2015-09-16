@@ -39,8 +39,11 @@ class Tile():
 		if self.graphics[layer] == [None]:
 			baseobject =  None
 			animated = False
-		elif len(self.graphics[layer][1]) == 1 and len(self.graphics[layer][1][0]) == 1:
+		elif len(self.graphics[layer][1]) == 1 and len(self.graphics[layer][1][0]) == 1 and self.graphics[layer][2][1] == self.graphics[layer][2][0] / 2:
 			baseobject = 'object'
+			animated = False
+		elif len(self.graphics[layer][1]) == 1 and len(self.graphics[layer][1][0]) == 1 and self.graphics[layer][2][1] == self.graphics[layer][2][0] * 1.5:
+			baseobject = 'wall'
 			animated = False
 		return [baseobject, animated]
 		'''
